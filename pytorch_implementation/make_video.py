@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def make_video(result_dir: Path, mot_dir: Path, output_dir: Path, convert_h264: bool) -> None:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT)
+    result_dir.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
     cmd = [
         "python",

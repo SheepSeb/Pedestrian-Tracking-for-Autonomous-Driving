@@ -38,6 +38,8 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
+    # Ensure directories exist to avoid FileNotFound errors.
+    os.makedirs(args.result_dir, exist_ok=True)
     os.makedirs(args.output_dir, exist_ok=True)
     for sequence_txt in os.listdir(args.result_dir):
         sequence = os.path.splitext(sequence_txt)[0]
