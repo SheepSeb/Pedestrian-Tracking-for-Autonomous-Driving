@@ -91,3 +91,12 @@ ENV/
 test_bloom_filter.py
 bloom_filter_demo.py
 BLOOM_FILTER_README.md
+
+# Local tools and cache
+.cursor/
+
+# Training artifacts and datasets
+MOT16/
+MOT16.zip
+checkpoints/
+runs/

@@ -1,0 +1,22 @@
+[project]
+name = "deep-sort"
+version = "0.1.0"
+description = "Deep SORT tracker with a PyTorch appearance model and uv-managed environment."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=2.2.6",
+    "opencv-python>=4.11.0.86",
+    "scipy>=1.15.3",
+    "tensorboard>=2.20.0",
+    "torch>=2.9.1",
+    "torchvision>=0.24.1",
+    "wandb>=0.23.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = false
