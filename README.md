@@ -5,7 +5,7 @@
 This repo contains the base Deep SORT tracker plus two self-contained stacks:
 
 - `tf_implementation`: scripts that use the TensorFlow appearance model (`models_tf/mars-small128.pb`).
-- `pytorch_implementation`: scripts that use the PyTorch appearance model (ResNet18 default, optional checkpoint).
+- `pytorch_implementation`: scripts that use the PyTorch appearance model (ResNet18 default, optional checkpoint, or DINOv2 wrapper).
 - Base/core code remains under `deep_sort/`, `application_util/`, and shared tools in `tools/`.
 
 ## Setup
@@ -89,6 +89,24 @@ PYTHONPATH=. uv run python pytorch_implementation/make_video.py \
   --convert_h264
 ```
 
+### PyTorch pipeline (DINOv2 appearance)
+Generate detections with a DINOv2 backbone (defaults to ViT-S/14 and recommended 518x518 crops):
+```
+PYTHONPATH=. uv run python pytorch_implementation/generate_detections_dinov2.py \
+  --mot_dir ./MOT16/train \
+  --output_dir ./resources/detections_dinov2
+```
+Optional: `--backbone vit_base_patch14_dinov2` (or any timm DINOv2 variant) and `--model /path/to/state_dict.pt` for fine-tuned weights.
+
+Track a sequence with DINOv2 detections (Kalman filter + Deep SORT core unchanged):
+```
+PYTHONPATH=. uv run python pytorch_implementation/run_tracker_dinov2.py \
+  --sequence MOT16-02 \
+  --detections_dir ./resources/detections_dinov2 \
+  --tracks_dir ./tracks_dinov2 \
+  --mot_dir ./MOT16/train
+```
+
 ### Train PyTorch appearance model (1+ epochs)
 ```
 PYTHONPATH=. uv run python tools/train_mot16.py \
@@ -111,8 +129,19 @@ PYTHONPATH=. uv run python tools/train_and_compare.py \
 ```
 Picks `models_tf/mars-small128.pb` automatically if present; prints basic Torch vs TF embedding stats on sample frames.
 
+### MOT16 experiment + metrics (MOTA, MOTP, MT, ML, ID, FM, FP, FN, Runtime)
+Run the tracker over all MOT16 train sequences and compute metrics with motmetrics:
+```
+PYTHONPATH=. uv run python tools/experiment_mot16.py \
+  --mot_dir ./MOT16/train \
+  --detection_dir ./resources/detections_dinov2 \
+  --tracks_dir ./experiments/mot16_tracks_dinov2 \
+  --metrics_out ./experiments/mot16_metrics_dinov2.csv
+```
+You can point `--detection_dir` to any detection set (e.g., `detections_torch` or `detections_tf`). Results are printed to stdout and saved to CSV (per-sequence plus OVERALL row). MOTP is reported as IoU-style (1 - motmetrics distance). Runtime is measured per sequence during tracking.
+
 ## Notes
-- Outputs are organized separately: `resources/detections_tf`, `resources/detections_torch`, `tracks_tf`, `tracks_torch`, `videos_tf`, `videos_torch`.
+- Outputs are organized separately: `resources/detections_tf`, `resources/detections_torch`, `resources/detections_dinov2`, `tracks_tf`, `tracks_torch`, `tracks_dinov2`, `videos_tf`, `videos_torch`.
 - Base tracker code is shared; the two stacks differ only in the appearance model and helper wrappers.
 - Legacy TF tools (e.g., `tools/freeze_model.py`) remain available; PyTorch is the primary path for new work.
 

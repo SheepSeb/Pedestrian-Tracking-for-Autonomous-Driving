@@ -100,10 +100,7 @@ MOT16/
 MOT16.zip
 checkpoints/
 runs/
-resources/detections_tf/
-resources/detections_torch/
-tracks_tf/
-tracks_torch/
-videos_tf/
-videos_torch/
+resources/
+tracks_*/
+videos_*/
 models*/

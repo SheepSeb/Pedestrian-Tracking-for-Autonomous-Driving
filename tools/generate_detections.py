@@ -120,6 +120,7 @@ def create_box_encoder(
     device: str = "auto",
     batch_size: int = 32,
     image_size: Tuple[int, int] = DEFAULT_IMAGE_SIZE,
+    backbone: str = "resnet18",
 ) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
     # If a TensorFlow frozen graph is provided, use the TF encoder.
     if model_path and model_path.endswith(".pb"):
@@ -174,7 +175,10 @@ def create_box_encoder(
 
     # Otherwise, use the PyTorch encoder
     model, transform, resolved_device = load_appearance_model(
-        model_path=model_path or None, device=device, image_size=image_size
+        model_path=model_path or None,
+        device=device,
+        image_size=image_size,
+        backbone=backbone,
     )
     return TorchImageEncoder(
         model=model,
@@ -251,6 +255,15 @@ def parse_args():
         help="Torch device to use ('auto', 'cpu', 'cuda', 'mps').",
     )
     parser.add_argument(
+        "--backbone",
+        default="resnet18",
+        help=(
+            "Backbone to use for appearance encoding. "
+            "Options: 'resnet18' (default) or DINOv2 variants such as "
+            "'dinov2_vits14' / 'vit_small_patch14_dinov2'."
+        ),
+    )
+    parser.add_argument(
         "--batch_size", type=int, default=32, help="Batch size for feature extraction."
     )
     parser.add_argument(
@@ -294,6 +307,7 @@ def main():
         device=args.device,
         batch_size=args.batch_size,
         image_size=image_size,
+        backbone=args.backbone,
     )
     generate_detections(
         encoder, args.mot_dir, args.output_dir, args.detection_dir
