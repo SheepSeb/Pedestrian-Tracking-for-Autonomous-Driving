@@ -1,0 +1,95 @@
+---
+description: "Testing, parity checks, and style guidelines for the Deep SORT PyTorch refactor."
+alwaysApply: false
+---
+# Deep SORT: testing, parity & style during refactor
+
+Use this rule when adding tests, checking parity with TensorFlow, or improving code quality.
+
+## Parity checks during migration
+
+When modifying feature extraction or tracking behavior:
+
+- Aim for **functional parity**, not bitwise equality.
+- Compare behavior using a small MOT sequence:
+  - Track ID continuity.
+  - Number of ID switches.
+  - Proportion of frames with correct associations.
+
+If TensorFlow code still exists:
+
+- Write a small comparison script (even ad-hoc) that:
+  - Runs TF and PyTorch pipelines on the same inputs.
+  - Compares:
+    - Embedding shapes and basic statistics.
+    - Tracking outputs (IDs per frame).
+
+Document any significant differences:
+
+- Add short comments near the new implementation explaining:
+  - Expected deviations.
+  - Known limitations.
+
+---
+
+## Testing guidelines
+
+Prefer incremental tests as you refactor:
+
+- **Model tests**
+  - Test that the PyTorch appearance model:
+    - Accepts expected input shapes.
+    - Returns embeddings of shape `(N, 128)`.
+    - Runs without raising errors on CPU and (optionally) GPU.
+
+- **Detection generation tests**
+  - Validate that `tools/generate_detections.py` (or underlying functions):
+    - Produce `.npy` arrays with expected columns.
+    - Keep detection meta-data intact.
+    - Add 128-D features at the end.
+
+- **Tracker tests**
+  - Use tiny synthetic scenarios:
+    - 2–3 moving objects across a few frames.
+    - Confirm that:
+      - Tracks remain stable.
+      - Basic association logic behaves as expected.
+
+Keep tests fast and deterministic.
+
+---
+
+## Style & code quality
+
+When touching modules:
+
+- Use modern Python:
+  - Type hints for new or significantly refactored functions.
+  - Clear return types where reasonable.
+- Imports order:
+  1. Standard library
+  2. Third-party (`torch`, `numpy`, etc.)
+  3. Local modules (`deep_sort.*`, `application_util.*`, `tools.*`)
+
+- Keep functions small and focused:
+  - Avoid long, deeply nested scripts.
+  - Extract helper functions as needed.
+
+- Documentation:
+  - Add docstrings to new public APIs and CLI entrypoints.
+  - Explain non-obvious math or model choices in brief comments.
+
+---
+
+## How to use the AI with these rules
+
+When asking the AI for help on this project:
+
+- Ask for **small, focused refactors** (e.g., “convert this TF feature extractor to PyTorch”) rather than full rewrites.
+- Use these patterns:
+  - “Update `tools/generate_detections.py` to use the PyTorch appearance model while keeping the CLI and .npy format identical.”
+  - “Add a unit test that checks the PyTorch appearance model returns (N, 128) embeddings.”
+- Expect the AI to:
+  - Respect architecture boundaries.
+  - Keep CLIs and external contracts stable.
+  - Use `uv` for dependency changes.

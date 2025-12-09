@@ -52,14 +52,14 @@ def run(sequence_dir, result_file, show_false_alarms=False, detection_file=None,
                 seq_info["detections"], frame_idx)
             vis.draw_detections(detections)
 
-        mask = results[:, 0].astype(np.int) == frame_idx
-        track_ids = results[mask, 1].astype(np.int)
+        mask = results[:, 0].astype(int) == frame_idx
+        track_ids = results[mask, 1].astype(int)
         boxes = results[mask, 2:6]
         vis.draw_groundtruth(track_ids, boxes)
 
         if show_false_alarms:
             groundtruth = seq_info["groundtruth"]
-            mask = groundtruth[:, 0].astype(np.int) == frame_idx
+            mask = groundtruth[:, 0].astype(int) == frame_idx
             gt_boxes = groundtruth[mask, 2:6]
             for box in boxes:
                 # NOTE(nwojke): This is not strictly correct, because we don't
@@ -68,7 +68,7 @@ def run(sequence_dir, result_file, show_false_alarms=False, detection_file=None,
                 if iou(box, gt_boxes).max() < min_iou_overlap:
                     vis.viewer.color = 0, 0, 255
                     vis.viewer.thickness = 4
-                    vis.viewer.rectangle(*box.astype(np.int))
+                    vis.viewer.rectangle(*box.astype(int))
 
     if update_ms is None:
         update_ms = seq_info["update_ms"]

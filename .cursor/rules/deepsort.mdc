@@ -1,0 +1,73 @@
+---
+description: "Manage Deep SORT project dependencies and environments using uv."
+alwaysApply: false
+---
+# Deep SORT: uv-based project management
+
+Use this rule when changing dependencies, Python versions, or environment setup.
+
+## Principles
+
+- `pyproject.toml` is the single source of truth for project dependencies.
+- `uv.lock` must be kept in sync and committed.
+- Avoid manual environment management; rely on `uv`.
+
+---
+
+## Adding and updating dependencies
+
+When you need a new package (e.g., PyTorch):
+
+- Prefer uv commands over manual edits, for example:
+
+  - `uv add torch torchvision`
+
+- Let `uv` update:
+  - `[project.dependencies]` in `pyproject.toml`
+  - `uv.lock` file
+
+If the user asks for a new dev tool (linters, test frameworks, etc.):
+
+- Use dependency groups if configured, e.g.:
+
+  - `uv add --group dev pytest`
+
+After dependency changes:
+
+- Ensure `uv.lock` is updated (typically via `uv add` or `uv sync`).
+- Do not hand-edit `uv.lock`.
+
+---
+
+## Migrating from requirements files
+
+If `requirements.txt` or `requirements-gpu.txt` exist:
+
+- Treat them as legacy.
+- To import them into uv:
+
+  - `uv add -r requirements.txt`
+  - `uv add -r requirements-gpu.txt`
+
+- Once dependencies are fully represented in `pyproject.toml`:
+  - Optionally remove requirements files, or
+  - Clearly mark them as deprecated in comments / docs.
+
+---
+
+## Python version and environments
+
+- Respect any Python version declared in `pyproject.toml`.
+- If the project uses `.venv` or `.python-version`, assume uv will honor that layout.
+- When instructions mention “create an environment”:
+  - Translate that to uv usage, e.g.: `uv sync` to create/update the environment from `pyproject.toml` + `uv.lock`.
+
+---
+
+## CI and reproducibility notes
+
+When updating dependencies in ways that affect CI or reproducibility:
+
+- Keep `pyproject.toml` minimal and clear (no unused dependencies).
+- Ensure `uv.lock` is committed so others can reproduce the exact environment.
+- Avoid relying on global or user-level Python packages; everything should come from uv-managed environments.

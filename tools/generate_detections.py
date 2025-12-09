@@ -9,8 +9,15 @@ from typing import Callable, Iterable, Tuple
 import cv2
 import numpy as np
 import torch
+from PIL import Image
 
 from deep_sort.appearance_model_torch import DEFAULT_IMAGE_SIZE, load_appearance_model
+
+# Optional TensorFlow import for legacy .pb models
+try:
+    import tensorflow as tf  # type: ignore
+except Exception:
+    tf = None
 
 
 def extract_image_patch(image: np.ndarray, bbox: np.ndarray, patch_shape: Tuple[int, int]):
@@ -87,10 +94,10 @@ class TorchImageEncoder:
                     np.uint8
                 )
             patch = cv2.cvtColor(patch, cv2.COLOR_BGR2RGB)
-            image_patches.append(patch)
+            image_patches.append(Image.fromarray(patch))
         return self._encode(image_patches)
 
-    def _encode(self, patches: Iterable[np.ndarray]) -> np.ndarray:
+    def _encode(self, patches: Iterable["Image.Image"]) -> np.ndarray:
         patches = list(patches)
         if not patches:
             return np.zeros((0, self.feature_dim), np.float32)
@@ -113,7 +120,59 @@ def create_box_encoder(
     device: str = "auto",
     batch_size: int = 32,
     image_size: Tuple[int, int] = DEFAULT_IMAGE_SIZE,
-) -> TorchImageEncoder:
+) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
+    # If a TensorFlow frozen graph is provided, use the TF encoder.
+    if model_path and model_path.endswith(".pb"):
+        if tf is None:
+            raise RuntimeError("TensorFlow is not available, cannot load .pb model.")
+
+        class ImageEncoderTF:
+            def __init__(self, checkpoint_filename: str):
+                self.session = tf.compat.v1.Session()
+                with tf.compat.v1.gfile.GFile(checkpoint_filename, "rb") as fh:
+                    graph_def = tf.compat.v1.GraphDef()
+                    graph_def.ParseFromString(fh.read())
+                tf.import_graph_def(graph_def, name="net")
+                graph = tf.compat.v1.get_default_graph()
+
+                def _get_tensor(name: str):
+                    for candidate in [f"net/{name}:0", f"{name}:0"]:
+                        try:
+                            return graph.get_tensor_by_name(candidate)
+                        except Exception:
+                            continue
+                    raise KeyError(f"Could not find tensor for name '{name}' in graph.")
+
+                self.input_var = _get_tensor("images")
+                self.output_var = _get_tensor("features")
+                self.feature_dim = self.output_var.get_shape().as_list()[-1]
+                self.image_shape = self.input_var.get_shape().as_list()[1:]
+
+            def __call__(self, data_x, batch_size=32):
+                out = np.zeros((len(data_x), self.feature_dim), np.float32)
+                # simple batching
+                for start in range(0, len(data_x), batch_size):
+                    end = start + batch_size
+                    batch = data_x[start:end]
+                    out[start:end] = self.session.run(self.output_var, feed_dict={self.input_var: batch})
+                return out
+
+        encoder_tf = ImageEncoderTF(model_path)
+        image_shape = encoder_tf.image_shape
+
+        def encoder(image: np.ndarray, boxes: np.ndarray) -> np.ndarray:
+            patches = []
+            for box in boxes:
+                patch = extract_image_patch(image, box, image_shape[:2])
+                if patch is None:
+                    patch = np.random.uniform(0.0, 255.0, image_shape).astype(np.uint8)
+                patches.append(patch)
+            patches = np.asarray(patches)
+            return encoder_tf(patches, batch_size)
+
+        return encoder
+
+    # Otherwise, use the PyTorch encoder
     model, transform, resolved_device = load_appearance_model(
         model_path=model_path or None, device=device, image_size=image_size
     )

@@ -1,0 +1,31 @@
+---
+description: "Refactor TensorFlow-based Deep SORT appearance model to PyTorch."
+alwaysApply: false
+---
+# Deep SORT: TensorFlow → PyTorch appearance model
+
+Use this rule when replacing TensorFlow with PyTorch or touching feature extraction code.
+
+## High-level migration plan
+
+1. Implement a PyTorch appearance model that outputs 128-D embeddings.
+2. Integrate it into `tools/generate_detections.py`.
+3. Remove TensorFlow dependencies only after PyTorch parity is acceptable.
+4. Keep the tracker itself framework-agnostic (NumPy-only).
+
+---
+
+## Implementing the PyTorch appearance model
+
+Create a dedicated module, for example:
+
+- `deep_sort/appearance_model_torch.py`
+
+This module should provide:
+
+- A `torch.nn.Module`-based model class.
+- A factory such as:
+
+  ```python
+  def load_appearance_model(device: str = "cuda") -> torch.nn.Module:
+      ...

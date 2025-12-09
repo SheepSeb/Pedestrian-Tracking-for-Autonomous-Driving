@@ -1,0 +1,80 @@
+---
+alwaysApply: false
+description: "Maintain Deep SORT architecture boundaries while refactoring the project."
+---
+
+# Deep SORT architecture & responsibilities
+
+Use this rule to keep the original Deep SORT design intact while refactoring.
+
+## Overall goals
+
+- Treat this codebase as a fork of the original Deep SORT tracker.
+- Preserve:
+  - Tracking behavior
+  - Public CLIs and their arguments
+  - Input/output formats (e.g., MOT-style detections, .npy embeddings)
+- Only change architecture where needed to:
+  - Swap TensorFlow for PyTorch
+  - Adopt `uv` for dependency management
+
+## Module boundaries (do NOT entangle with frameworks)
+
+**Core tracking (stay framework-agnostic, mostly NumPy):**
+
+- `deep_sort/kalman_filter.py`
+- `deep_sort/linear_assignment.py`
+- `deep_sort/iou_matching.py`
+- `deep_sort/nn_matching.py`
+- `deep_sort/track.py`
+- `deep_sort/tracker.py`
+
+Rules:
+
+- Do **not** introduce PyTorch or TensorFlow imports here.
+- Keep interfaces in terms of NumPy arrays and plain Python types.
+- Changes here should be minimal and behavior-preserving.
+
+**Application / CLIs (adapt behavior, not interface):**
+
+- `deep_sort_app.py`
+- `evaluate_motchallenge.py`
+- `generate_videos.py`
+- `show_results.py`
+- `application_util/*`
+- Any scripts under `tools/` that orchestrate the tracker.
+
+Rules:
+
+- Preserve CLI flags, defaults, and outputs.
+- You may update imports to point to new PyTorch-based modules.
+- Logically, these scripts should only depend on:
+  - Tracker API
+  - Detection / embedding generators
+  - Basic I/O (video, image, MOT files)
+
+**Appearance model / feature extraction (where framework lives):**
+
+- TensorFlow-specific pieces live mainly in:
+  - `tools/generate_detections.py`
+  - `tools/freeze_model.py`
+  - `resources/networks/*.pb`
+
+Rules:
+
+- Move all deep model logic into a dedicated PyTorch module (see PyTorch rule).
+- The rest of the code should only call a simple feature-extraction API, not framework internals.
+
+## Stable external behavior
+
+Whenever refactoring:
+
+- Keep:
+  - `.npy` file formats and shapes.
+  - MOTChallenge evaluation flow.
+  - Directory layout for datasets and detections (unless there is a very strong reason).
+
+If you must break a contract:
+
+- Add a clear comment near the change.
+- Prefer backward-compatible fallbacks where feasible.
